@@ -1,0 +1,45 @@
+import type { Request, Response } from "express";
+import userModel from "../models/user.model.js";
+import { generateToken } from "../utils/generateToken.js";
+
+/**
+ @route       POST /api/auth/register
+ @desc        Create a new user, hash the password, save it to database
+ @access      Public
+ @param       {Request} req - Express request object containing name, email, and password in req.body
+ @param       {Response} res - Express response object
+ @returns     {Response} 201 - Success response confirming user creation and assigning cookie
+ @returns     {Response} 409 - Conflict error if a user with the provided email already exists
+ @returns     {Response} 500 - Internal server error handling unforeseen database or runtime issues
+ */
+export const registerUser = async (req: Request, res: Response) => {
+  const { name, email, password } = req.body;
+
+  try {
+    const userAlreadyExist = await userModel.findOne({ email });
+    if (userAlreadyExist) {
+      return res.status(409).json({
+        message: "User with email already exists",
+      });
+    }
+
+    const newUser = await userModel.create({ name, email, password });
+
+    const accessToken = generateToken(newUser);
+
+    res.cookie("accessToken", accessToken, {
+      httpOnly: true,
+      secure: true,
+      sameSite: "strict",
+    });
+
+    return res.status(201).json({
+      message: "user created successfully",
+    });
+  } catch (error) {
+    console.log("error registering user: ", error);
+    return res.status(500).json({
+      message: "internal server error",
+    });
+  }
+};
