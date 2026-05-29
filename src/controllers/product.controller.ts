@@ -80,15 +80,22 @@ export const createProduct = async (req: Request, res: Response) => {
  @param       {Request} req - Express request object
  @param       {Response} res - Express response object
  @returns     {Response} 200 - Success response when all products are fetched
- @returns     {Response} 204 - Success response when there are no products in the database
+ @returns     {Response} 404 - Error response when there are no products in the database
  @returns     {Response} 500 - Internal server error handling unforeseen database, runtime issues
  */
 export const getAllProducts = async (req: Request, res: Response) => {
+  const { category } = req.query;
   try {
-    const allProducts = await productModel.find();
-    if (!allProducts) {
-      return res.status(204).json({
-        message: "No products",
+    const filter: Record<string, any> = {};
+
+    if (category) {
+      filter.category = category;
+    }
+
+    const allProducts = await productModel.find(filter);
+    if (allProducts.length === 0) {
+      return res.status(404).json({
+        message: "No products found",
       });
     }
 
