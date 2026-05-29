@@ -1,7 +1,8 @@
-import type { Request, Response, NextFunction } from "express";
+import type { Request, Response, NextFunction, RequestHandler } from "express";
 import userModel from "../models/user.model.js";
 import { generateToken } from "../utils/generateToken.js";
 import ApiError from "../utils/apiError.js";
+import asyncHandler from "../utils/asyncHandler.js";
 
 /**
  @route       POST /api/auth/register
@@ -14,14 +15,10 @@ import ApiError from "../utils/apiError.js";
  @returns     {Response} 409 - Conflict error if a user with the provided email already exists
  @returns     {Response} 500 - Internal server error handling unforeseen database or runtime issues
  */
-export const registerUser = async (
-  req: Request,
-  res: Response,
-  next: NextFunction,
-) => {
-  const { name, email, password } = req.body;
+export const registerUser: RequestHandler = asyncHandler(
+  async (req: Request, res: Response) => {
+    const { name, email, password } = req.body;
 
-  try {
     const userAlreadyExist = await userModel.findOne({ email });
     if (userAlreadyExist) {
       throw new ApiError(409, "user with email already exists");
@@ -40,11 +37,8 @@ export const registerUser = async (
     return res.status(201).json({
       message: "user created successfully",
     });
-  } catch (error) {
-    console.log("error registering user: ", error);
-    next(error);
-  }
-};
+  },
+);
 
 /**
  @route       POST /api/auth/login
@@ -57,14 +51,10 @@ export const registerUser = async (
  @returns     {Response} 401 - Error if invalid credentials
  @returns     {Response} 500 - Internal server error handling log in
  */
-export const loginUser = async (
-  req: Request,
-  res: Response,
-  next: NextFunction,
-) => {
-  const { email, password } = req.body;
+export const loginUser: RequestHandler = asyncHandler(
+  async (req: Request, res: Response) => {
+    const { email, password } = req.body;
 
-  try {
     const user = await userModel.findOne({ email });
 
     if (!user) {
@@ -86,8 +76,5 @@ export const loginUser = async (
     return res.status(200).json({
       message: "Login successfully",
     });
-  } catch (error) {
-    console.log("error logging in user", error);
-    next(error);
-  }
-};
+  },
+);

@@ -1,10 +1,11 @@
-import type { NextFunction, Request, Response } from "express";
+import type { NextFunction, Request, RequestHandler, Response } from "express";
 import imageKitClient from "../config/imageKit.js";
 import { toFile } from "@imagekit/nodejs";
 import productModel from "../models/product.model.js";
 import type { Iimage } from "../models/product.model.js";
 import mongoose from "mongoose";
 import ApiError from "../utils/apiError.js";
+import asyncHandler from "../utils/asyncHandler.js";
 
 /**
  @route       POST /api/products
@@ -17,12 +18,8 @@ import ApiError from "../utils/apiError.js";
  @returns     {Response} 400 - Error response when no images are provided
  @returns     {Response} 500 - Internal server error handling unforeseen database, runtime issues or image upload failed
  */
-export const createProduct = async (
-  req: Request,
-  res: Response,
-  next: NextFunction,
-) => {
-  try {
+export const createProduct: RequestHandler = asyncHandler(
+  async (req: Request, res: Response) => {
     const { name, description, category, price } = req.body;
     const files = req.files as Express.Multer.File[];
 
@@ -69,11 +66,8 @@ export const createProduct = async (
       message: `Product created with ${uploaded.length} image(s)${failedCount ? `, ${failedCount} failed` : ""}`,
       product,
     });
-  } catch (error) {
-    console.log("error while creating product", error);
-    next(error);
-  }
-};
+  },
+);
 
 /**
  @route       GET /api/products
@@ -86,13 +80,9 @@ export const createProduct = async (
  @returns     {Response} 404 - Error response when there are no products in the database
  @returns     {Response} 500 - Internal server error handling unforeseen database, runtime issues
  */
-export const getAllProducts = async (
-  req: Request,
-  res: Response,
-  next: NextFunction,
-) => {
-  const { category } = req.query;
-  try {
+export const getAllProducts: RequestHandler = asyncHandler(
+  async (req: Request, res: Response) => {
+    const { category } = req.query;
     const filter: Record<string, any> = {};
 
     if (category) {
@@ -108,11 +98,8 @@ export const getAllProducts = async (
       message: "all products fetched successfully",
       allProducts,
     });
-  } catch (error) {
-    console.log("error fetching all products", error);
-    next(error);
-  }
-};
+  },
+);
 
 /**
  @route       GET /api/products/:id
@@ -125,10 +112,9 @@ export const getAllProducts = async (
  @returns     {Response} 404 - Error response when product is not found
  @returns     {Response} 500 - Internal server error handling unforeseen database, runtime issues
  */
-export const getProductById = async (
+export const getProductById: RequestHandler = async (
   req: Request,
   res: Response,
-  next: NextFunction,
 ) => {
   const { id } = req.params as { id: string };
 
@@ -136,21 +122,16 @@ export const getProductById = async (
     throw new ApiError(400, "invalid product ID");
   }
 
-  try {
-    const product = await productModel.findById(id);
+  const product = await productModel.findById(id);
 
-    if (!product) {
-      throw new ApiError(404, "No product with this ID");
-    }
-
-    return res.status(200).json({
-      message: "product is fetched successfully",
-      product,
-    });
-  } catch (error) {
-    console.log("error fetching product with id", error);
-    next(error);
+  if (!product) {
+    throw new ApiError(404, "No product with this ID");
   }
+
+  return res.status(200).json({
+    message: "product is fetched successfully",
+    product,
+  });
 };
 
 /**
@@ -165,10 +146,9 @@ export const getProductById = async (
  @returns     {Response} 404 - Error response when product is not found
  @returns     {Response} 500 - Internal server error handling unforeseen database, runtime issues
  */
-export const updateProduct = async (
+export const updateProduct: RequestHandler = async (
   req: Request,
   res: Response,
-  next: NextFunction,
 ) => {
   const { id } = req.params as { id: string };
   const { name, description, price, category } = req.body;
@@ -177,27 +157,22 @@ export const updateProduct = async (
     throw new ApiError(400, "invalid product ID");
   }
 
-  try {
-    const product = await productModel.findById(id);
-    if (!product) {
-      throw new ApiError(404, "product not found");
-    }
-
-    if (name !== undefined) product.name = name;
-    if (description !== undefined) product.description = description;
-    if (price !== undefined) product.price = Number(price);
-    if (category !== undefined) product.category = category;
-
-    await product.save();
-
-    return res.status(200).json({
-      message: "product updated successfully",
-      product,
-    });
-  } catch (error) {
-    console.log("error updating product", error);
-    next(error);
+  const product = await productModel.findById(id);
+  if (!product) {
+    throw new ApiError(404, "product not found");
   }
+
+  if (name !== undefined) product.name = name;
+  if (description !== undefined) product.description = description;
+  if (price !== undefined) product.price = Number(price);
+  if (category !== undefined) product.category = category;
+
+  await product.save();
+
+  return res.status(200).json({
+    message: "product updated successfully",
+    product,
+  });
 };
 
 /**
@@ -212,18 +187,14 @@ export const updateProduct = async (
  @returns     {Response} 404 - Error response when product is not found
  @returns     {Response} 500 - Internal server error handling unforeseen database, runtime issues
  */
-export const deleteProduct = async (
-  req: Request,
-  res: Response,
-  next: NextFunction,
-) => {
-  const { id } = req.params as { id: string };
+export const deleteProduct: RequestHandler = asyncHandler(
+  async (req: Request, res: Response, next: NextFunction) => {
+    const { id } = req.params as { id: string };
 
-  if (!mongoose.Types.ObjectId.isValid(id)) {
-    throw new ApiError(400, "invalid product ID");
-  }
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      throw new ApiError(400, "invalid product ID");
+    }
 
-  try {
     const product = await productModel.findById(id);
 
     if (!product) {
@@ -243,8 +214,5 @@ export const deleteProduct = async (
     return res.status(200).json({
       message: "product deleted successfully",
     });
-  } catch (error) {
-    console.log("error deleting product", error);
-    next(error);
-  }
-};
+  },
+);
