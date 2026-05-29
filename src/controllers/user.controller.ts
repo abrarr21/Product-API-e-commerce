@@ -1,6 +1,7 @@
-import type { Request, Response } from "express";
+import type { Request, Response, NextFunction } from "express";
 import userModel from "../models/user.model.js";
 import { generateToken } from "../utils/generateToken.js";
+import ApiError from "../utils/apiError.js";
 
 /**
  @route       POST /api/auth/register
@@ -8,19 +9,22 @@ import { generateToken } from "../utils/generateToken.js";
  @access      Public
  @param       {Request} req - Express request object containing name, email, and password in req.body
  @param       {Response} res - Express response object
+ @param       {NextFunction} next - Express next function for error handling
  @returns     {Response} 201 - Success response confirming user creation and assigning cookie
  @returns     {Response} 409 - Conflict error if a user with the provided email already exists
  @returns     {Response} 500 - Internal server error handling unforeseen database or runtime issues
  */
-export const registerUser = async (req: Request, res: Response) => {
+export const registerUser = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
   const { name, email, password } = req.body;
 
   try {
     const userAlreadyExist = await userModel.findOne({ email });
     if (userAlreadyExist) {
-      return res.status(409).json({
-        message: "User with email already exists",
-      });
+      throw new ApiError(409, "user with email already exists");
     }
 
     const newUser = await userModel.create({ name, email, password });
@@ -38,9 +42,7 @@ export const registerUser = async (req: Request, res: Response) => {
     });
   } catch (error) {
     console.log("error registering user: ", error);
-    return res.status(500).json({
-      message: "internal server error",
-    });
+    next(error);
   }
 };
 
@@ -50,26 +52,27 @@ export const registerUser = async (req: Request, res: Response) => {
  @access      Public
  @param       {Request} req - Express request object containing email, and password in req.body
  @param       {Response} res - Express response object
+ @param       {NextFunction} next - Express next funciton for error handling
  @returns     {Response} 200 - Success response confirming user existence and assigning cookie
  @returns     {Response} 401 - Error if invalid credentials
  @returns     {Response} 500 - Internal server error handling log in
  */
-export const loginUser = async (req: Request, res: Response) => {
+export const loginUser = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
   const { email, password } = req.body;
 
   try {
     const user = await userModel.findOne({ email });
 
     if (!user) {
-      return res.status(401).json({
-        message: "user not found",
-      });
+      throw new ApiError(401, "user not found");
     }
 
     if (!(await user.matchedPassword(password))) {
-      return res.json(401).json({
-        message: "invalid email or password",
-      });
+      throw new ApiError(401, "invalid email or password");
     }
 
     const accessToken = generateToken(user);
@@ -85,8 +88,6 @@ export const loginUser = async (req: Request, res: Response) => {
     });
   } catch (error) {
     console.log("error logging in user", error);
-    return res.status(500).json({
-      message: "internal server error",
-    });
+    next(error);
   }
 };

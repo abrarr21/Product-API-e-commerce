@@ -1,6 +1,7 @@
 import app from "./app.js";
 import config from "./config/config.js";
 import connectDB from "./config/database.js";
+import errorMiddleware from "./middlewares/error.middleware.js";
 import productRouter from "./routes/product.route.js";
 import userRouter from "./routes/user.route.js";
 
@@ -13,6 +14,8 @@ app.get("/", (_req, res) => {
 app.use("/api/auth", userRouter);
 
 app.use("/api/products", productRouter);
+
+app.use(errorMiddleware);
 
 app.listen(config.PORT, () => {
   console.log(`Server running on port: ${config.PORT}`);
