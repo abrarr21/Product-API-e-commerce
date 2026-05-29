@@ -1,13 +1,23 @@
 import mongoose from "mongoose";
 import bcrypt from "bcrypt";
 
-export interface User {
+// Describes the raw data fields
+export interface IUser {
   name: string;
   email: string;
   password: string;
 }
 
-const userSchema = new mongoose.Schema<User>(
+// Describes the custom instance methods on the document
+export interface IUserMethods {
+  matchedPassword(enteredPassword: string): Promise<boolean>;
+}
+
+// combines data fields knowledge + methods knowledge into one model type
+type UserModel = mongoose.Model<IUser, {}, IUserMethods>;
+
+// Wire all three into the Schema
+const userSchema = new mongoose.Schema<IUser, UserModel, IUserMethods>(
   {
     name: {
       type: String,
@@ -32,6 +42,7 @@ const userSchema = new mongoose.Schema<User>(
   { timestamps: true },
 );
 
+// Hash the password before saving it to database
 userSchema.pre("save", async function () {
   if (!this.isModified("password")) return;
 
@@ -43,6 +54,11 @@ userSchema.pre("save", async function () {
   }
 });
 
-const userModel = mongoose.model("user", userSchema);
+// compares and checks the hashed password with the recieved password
+userSchema.methods.matchedPassword = async function (enteredPassword: string) {
+  return await bcrypt.compare(enteredPassword, this.password);
+};
+
+const userModel = mongoose.model<IUser, UserModel>("user", userSchema);
 
 export default userModel;

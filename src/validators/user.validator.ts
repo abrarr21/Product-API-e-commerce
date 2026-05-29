@@ -22,3 +22,14 @@ export const userRegisterInputRules = [
     .isLength({ min: 4 })
     .withMessage("password must contain atleast 4 characters"),
 ];
+
+export const userLoginInputRules = [
+  body("email")
+    .trim()
+    .notEmpty()
+    .withMessage("Email is required")
+    .isEmail()
+    .withMessage("invalid email format"),
+
+  body("password").notEmpty().withMessage("password is required"),
+];
