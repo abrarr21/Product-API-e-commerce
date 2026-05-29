@@ -32,4 +32,6 @@ productRouter.patch(
   productController.updateProduct,
 );
 
+productRouter.delete("/:id", requireAuth, productController.deleteProduct);
+
 export default productRouter;

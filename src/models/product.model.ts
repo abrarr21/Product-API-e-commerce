@@ -11,7 +11,22 @@ export enum ProductCategory {
   OTHER = "other",
 }
 
-const productSchema = new mongoose.Schema(
+export interface Iimage {
+  url: string;
+  name: string;
+  fileId: string;
+  originalName?: string;
+}
+
+export interface IProduct {
+  name: string;
+  description: string;
+  price: number;
+  category: ProductCategory;
+  images: Iimage[];
+}
+
+const productSchema = new mongoose.Schema<IProduct>(
   {
     name: {
       type: String,
@@ -55,6 +70,6 @@ const productSchema = new mongoose.Schema(
   { timestamps: true },
 );
 
-const productModel = mongoose.model("product", productSchema);
+const productModel = mongoose.model<IProduct>("product", productSchema);
 
 export default productModel;

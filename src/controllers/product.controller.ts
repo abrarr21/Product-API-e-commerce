@@ -2,6 +2,7 @@ import type { Request, Response } from "express";
 import imageKitClient from "../config/imageKit.js";
 import { toFile } from "@imagekit/nodejs";
 import productModel from "../models/product.model.js";
+import type { Iimage } from "../models/product.model.js";
 import mongoose from "mongoose";
 
 /**
@@ -185,6 +186,58 @@ export const updateProduct = async (req: Request, res: Response) => {
     });
   } catch (error) {
     console.log("error updating product", error);
+    return res.status(500).json({
+      message: "internal server error",
+    });
+  }
+};
+
+/**
+ @route       DELETE /api/products/:id
+ @desc        delete the product with provided fields
+ @access      Private
+ @param       {Request} req - Express request object
+ @param       {Response} res - Express response object
+ @returns     {Response} 200 - Success response when product is deleted
+ @returns     {Response} 400 - Error response when product id is invalid
+ @returns     {Response} 404 - Error response when product is not found
+ @returns     {Response} 500 - Internal server error handling unforeseen database, runtime issues
+ */
+export const deleteProduct = async (req: Request, res: Response) => {
+  const { id } = req.params as { id: string };
+
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    res.status(400).json({
+      error: "invalid product id",
+    });
+    return;
+  }
+
+  try {
+    const product = await productModel.findById(id);
+
+    if (!product) {
+      res.status(404).json({
+        message: "product not found",
+      });
+      return;
+    }
+
+    // Delete all images from ImageKit
+    if (product.images && product.images.length > 0) {
+      const deleteImg = (product.images as Iimage[]).map((img) =>
+        imageKitClient.files.delete(img.fileId),
+      );
+      await Promise.allSettled(deleteImg);
+    }
+
+    await productModel.findByIdAndDelete(id);
+
+    return res.status(200).json({
+      message: "product deleted successfully",
+    });
+  } catch (error) {
+    console.log("error deleting product", error);
     return res.status(500).json({
       message: "internal server error",
     });
