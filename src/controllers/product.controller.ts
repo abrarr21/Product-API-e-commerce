@@ -2,6 +2,7 @@ import type { Request, Response } from "express";
 import imageKitClient from "../config/imageKit.js";
 import { toFile } from "@imagekit/nodejs";
 import productModel from "../models/product.model.js";
+import mongoose from "mongoose";
 
 /**
  @route       POST /api/products
@@ -65,6 +66,77 @@ export const createProduct = async (req: Request, res: Response) => {
     });
   } catch (error) {
     console.log("error while creating product", error);
+    return res.status(500).json({
+      message: "internal server error",
+    });
+  }
+};
+
+/**
+ @route       GET /api/products
+ @desc        Fetches all the product from the database
+ @access      Public
+ @param       {Request} req - Express request object
+ @param       {Response} res - Express response object
+ @returns     {Response} 200 - Success response when all products are fetched
+ @returns     {Response} 204 - Success response when there are no products in the database
+ @returns     {Response} 500 - Internal server error handling unforeseen database, runtime issues
+ */
+export const getAllProducts = async (req: Request, res: Response) => {
+  try {
+    const allProducts = await productModel.find();
+    if (!allProducts) {
+      return res.status(204).json({
+        message: "No products",
+      });
+    }
+
+    return res.status(200).json({
+      message: "all products fetched successfully",
+      allProducts,
+    });
+  } catch (error) {
+    console.log("error fetching all products", error);
+    return res.status(500).json({
+      message: "internal server error",
+    });
+  }
+};
+
+/**
+ @route       GET /api/products/:id
+ @desc        Fetches the product with ID from the database
+ @access      Public
+ @param       {Request} req - Express request object
+ @param       {Response} res - Express response object
+ @returns     {Response} 200 - Success response when product is fetched
+ @returns     {Response} 404 - Error response when product is not found
+ @returns     {Response} 500 - Internal server error handling unforeseen database, runtime issues
+ */
+export const getProductById = async (req: Request, res: Response) => {
+  const { id } = req.params as { id: string };
+
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    return res.status(400).json({
+      error: "invalid product ID",
+    });
+  }
+
+  try {
+    const product = await productModel.findById(id);
+
+    if (!product) {
+      return res.status(404).json({
+        message: "No product with this id",
+      });
+    }
+
+    return res.status(200).json({
+      message: "product is fetched successfully",
+      product,
+    });
+  } catch (error) {
+    console.log("error fetching product with id", error);
     return res.status(500).json({
       message: "internal server error",
     });
