@@ -142,3 +142,51 @@ export const getProductById = async (req: Request, res: Response) => {
     });
   }
 };
+
+/**
+ @route       PATCH /api/products/:id
+ @desc        Update the product with provided fields
+ @access      Private
+ @param       {Request} req - Express request object
+ @param       {Response} res - Express response object
+ @returns     {Response} 200 - Success response when product is updated
+ @returns     {Response} 400 - Error response when product id is invalid
+ @returns     {Response} 404 - Error response when product is not found
+ @returns     {Response} 500 - Internal server error handling unforeseen database, runtime issues
+ */
+export const updateProduct = async (req: Request, res: Response) => {
+  const { id } = req.params as { id: string };
+  const { name, description, price, category } = req.body;
+
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    return res.status(400).json({
+      error: "invalid product id",
+    });
+  }
+
+  try {
+    const product = await productModel.findById(id);
+    if (!product) {
+      return res.status(404).json({
+        message: "product not found",
+      });
+    }
+
+    if (name !== undefined) product.name = name;
+    if (description !== undefined) product.description = description;
+    if (price !== undefined) product.price = Number(price);
+    if (category !== undefined) product.category = category;
+
+    await product.save();
+
+    return res.status(200).json({
+      message: "product updated successfully",
+      product,
+    });
+  } catch (error) {
+    console.log("error updating product", error);
+    return res.status(500).json({
+      message: "internal server error",
+    });
+  }
+};
